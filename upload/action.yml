@@ -23,7 +23,7 @@ runs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
     
           cd ${{ inputs.path }}
-          git remote set-url origin https://${{ inputs.token }}@github.com/${{ env.SFS_REPO }}.git
+          git remote set-url origin https://${{ inputs.token }}@codeberg.org/${{ env.SFS_REPO }}.git
     
           if [[ -n "$(git status --porcelain)" ]]; then
             git add --sparse ${{ inputs.published }}
