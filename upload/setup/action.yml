@@ -5,7 +5,7 @@ inputs:
     required: true
     default: ${{ runner.temp }}/maven
   repo:
-    description: 'Github repository'
+    description: 'Codeberg repository'
     required: true
 
 outputs:
@@ -22,4 +22,4 @@ runs:
           echo "SFS_REPO=${{ inputs.repo }}" >> $GITHUB_ENV
           echo "SFS_PATH=${{ inputs.path }}" >> $GITHUB_ENV
           
-          git clone --depth 1 https://github.com/${{ inputs.repo }} ${{ inputs.path }}
+          git clone --depth 1 https://codeberg.org/${{ inputs.repo }} ${{ inputs.path }}
