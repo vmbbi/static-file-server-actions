@@ -1,42 +1,74 @@
 name: 'Build SFS'
-description: 'Build static-file-server pages'
+description: 'Build static-file-server pages for Codeberg Pages'
 inputs:
   build-dir:
     description: 'Build directory path'
     required: true
     default: '.'
+  site:
+    description: 'Override site origin (e.g. for a custom domain)'
+    required: false
+    default: ''
+  base:
+    description: 'Override base path (e.g. / or /repo)'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
   steps:
-      - name: Checkout FS
-        shell: bash
-        run: git clone --depth 1 https://github.com/drtheodor/static-file-server ${{ runner.temp }}/sfs
-        
-      - name: Copy files
-        shell: bash
-        run: cp -a . ${{ runner.temp }}/sfs/files
-        
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "latest"
-          
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v5
-        
-      - name: Install dependencies
-        shell: bash
-        run: cd ${{ runner.temp }}/sfs && bun install
-        
-      - name: Build with Astro
-        shell: bash
-        run: |
-          cd ${{ runner.temp }}/sfs && bun astro build --silent \
-            --site "${{ steps.pages.outputs.origin }}" \
-            --base "${{ steps.pages.outputs.base_path }}"
-            
-      - name: Copy build
-        shell: bash
-        run: cp -r ${{ runner.temp }}/sfs/dist/. ${{ inputs.build-dir }}
+    - name: Checkout FS
+      shell: bash
+      run: git clone --depth 1 https://github.com/drtheodor/static-file-server "${{ runner.temp }}/sfs"
+
+    - name: Copy files
+      shell: bash
+      run: cp -a . "${{ runner.temp }}/sfs/files"
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: "latest"
+
+    - name: Setup Codeberg Pages URLs
+      id: pages
+      shell: bash
+      run: |
+        TARGET_REPO="${SFS_REPO:-${{ github.repository }}}"
+        OWNER="${TARGET_REPO%%/*}"
+        REPO="${TARGET_REPO#*/}"
+        OWNER_LOWER="${OWNER,,}"
+
+        ORIGIN="${{ inputs.site }}"
+        if [[ -z "$ORIGIN" ]]; then
+          ORIGIN="https://${OWNER_LOWER}.codeberg.page"
+        fi
+
+        BASE_PATH="${{ inputs.base }}"
+        if [[ -z "$BASE_PATH" ]]; then
+          if [[ "$REPO" == "pages" || "$REPO" == "${OWNER_LOWER}.codeberg.page" ]]; then
+            BASE_PATH="/"
+          else
+            BASE_PATH="/${REPO}"
+          fi
+        fi
+
+        echo "origin=${ORIGIN}" >> "$GITHUB_OUTPUT"
+        echo "base_path=${BASE_PATH}" >> "$GITHUB_OUTPUT"
+
+    - name: Install dependencies
+      shell: bash
+      run: cd "${{ runner.temp }}/sfs" && bun install
+
+    - name: Build with Astro
+      shell: bash
+      run: |
+        cd "${{ runner.temp }}/sfs" && bun astro build --silent \
+          --site "${{ steps.pages.outputs.origin }}" \
+          --base "${{ steps.pages.outputs.base_path }}"
+
+    - name: Copy build
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.build-dir }}"
+        cp -r "${{ runner.temp }}/sfs/dist/." "${{ inputs.build-dir }}"
